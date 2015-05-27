@@ -1,0 +1,1445 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<s:WindowedApplication xmlns:ATE="http://ns.adobe.com/ate/2009" 
+					   xmlns:lib="assets.graphics.PET.*" 
+					   xmlns:ai="http://ns.adobe.com/ai/2009" 
+					   xmlns:fc="http://ns.adobe.com/flashcatalyst/2009" 
+					   xmlns:d="http://ns.adobe.com/fxg/2008/dt" 
+					   xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:flm="http://ns.adobe.com/flame/2008"
+					   xmlns:lib2="assets.graphics.slof.*" backgroundAlpha="0" 
+					   creationComplete="application_creationCompleteHandler()" 
+					   currentState="loader" height="630" width="870" 
+					   showStatusBar="false" xmlns:mx="library://ns.adobe.com/flex/mx">
+	
+	<fx:Script>
+		<![CDATA[
+			import air.net.URLMonitor;
+			import flash.events.IOErrorEvent;
+			import flash.filesystem.*;
+			import flash.net.FileFilter;
+			import flash.utils.ByteArray;
+			import mx.controls.Alert;
+			import spark.components.Application;
+			import spark.filters.DropShadowFilter;			
+			
+			
+			// Gobal variables start
+			protected var csvFile:File;
+			protected var shadowFilter:spark.filters.DropShadowFilter;
+			protected const fileFilter:FileFilter = new FileFilter("CSV Files","*.csv;");
+			protected var monitor:URLMonitor;
+			//Global variables end
+			
+			
+			protected function application_creationCompleteHandler():void
+			{
+				
+				// Center main AIR app window on the screen
+				nativeWindow.x = (Capabilities.screenResolutionX - nativeWindow.width) / 2;
+				nativeWindow.y = (Capabilities.screenResolutionY - nativeWindow.height) / 2;
+				
+				// Detecting if user is present
+				NativeApplication.nativeApplication.idleThreshold = 30;
+				NativeApplication.nativeApplication.addEventListener(Event.USER_IDLE, onUserIdle);
+				NativeApplication.nativeApplication.addEventListener (Event.USER_PRESENT, onUserPresent);
+				
+				// Detecting online/offline network connectivity with a URLMonitor
+				monitor = new URLMonitor(new URLRequest("https://www.ezpaycenters.net/swspost.asp?")); // change URL to URL desired
+				monitor.addEventListener(StatusEvent.STATUS, onStatusChange);
+				monitor.pollInterval = 20000;// Milliseconds
+				monitor.start();
+				
+				// creates a generic drop shadow to use on components that don't accept CSS shadow styles
+				shadowFilter = new DropShadowFilter();
+				shadowFilter.color = 0x000000;
+				shadowFilter.alpha = 0.4;
+				shadowFilter.blurX = 5;
+				shadowFilter.blurY = 5;
+				shadowFilter.distance = 5;
+				
+				// 'external' shadows
+				addShadow(this);
+			}
+			protected function clearEmailFields():void
+			{
+				emailMsg.text = "";
+				emailSubject.text = "";
+				emailName.text = "";
+				emailUserEmail.text = "";
+				cb.selected = false;
+				
+			}
+			protected function addShadow(comp:DisplayObject):void
+			{
+				comp.filters = [this.shadowFilter];
+			}
+			protected function closeApp(event:MouseEvent):void 
+			{
+				this.nativeApplication.exit();
+				trace("Application exited by user");
+			}		
+			protected function onMouseDown(evt:MouseEvent):void
+			{
+				stage.nativeWindow.startMove();
+			}
+			protected function emailLinkBtn_clickHandler():void
+			{
+				const state:String = currentState;
+				if ( state == 'main' ) 
+				{
+					currentState='Main_msgWindow';
+				}
+				if ( state == 'Main_LogWindow' ) 
+				{
+					currentState='Main_LogWindow_msgWindow';
+				}
+			}			
+			protected function emailCloseBtn_clickHandler():void
+			{
+				const state:String = currentState;
+				if ( state == 'Main_msgWindow' ) 
+				{
+					currentState='main';
+					clearEmailFields();
+				}
+				if ( state == 'Main_LogWindow_msgWindow' ) 
+				{
+					currentState='Main_LogWindow';
+					clearEmailFields();
+				}
+			}
+			protected function rollUpBtn_clickHandler():void
+			{
+				const state:String = currentState;
+				if ( state == 'Main_LogWindow' ) 
+				{
+					currentState='main';
+				}
+				if ( state == 'Main_LogWindow_msgWindow' ) 
+				{
+					currentState='Main_msgWindow';
+				}
+			}			
+			protected function emailUsLInk2_clickHandler():void
+			{
+				const state:String = currentState;
+				if ( state == 'main' ) 
+				{
+					currentState='Main_msgWindow';
+				}
+				if ( state == 'Main_LogWindow' ) 
+				{
+					currentState='Main_LogWindow_msgWindow';
+				}
+			}			
+			protected function button_clickHandler():void
+			{
+				const state:String = currentState;
+				if ( state == 'main' ) 
+				{
+					currentState='Main_LogWindow';
+				}
+				if ( state == 'Main_msgWindow' ) 
+				{
+					currentState='Main_LogWindow_msgWindow';
+				}
+			}
+			protected function homeLinkBtn_clickHandler():void
+			{
+				navigateToURL( new URLRequest( encodeURI("http://www.paytechco.com")), "_blank");
+			}
+			protected function browseCSV(event:Event):void
+			{
+				csvFile = new File();
+				
+				// Event Handlers
+				csvFile.addEventListener(Event.SELECT, onFileSelected);
+				csvFile.addEventListener(Event.CANCEL, onCancel);
+				
+				// Browse for file
+				csvFile.browseForOpen("Select CSV file to upload", [fileFilter]);
+				
+			}
+			protected function onFileSelected(event:Event):void
+			{
+				// Display file path
+				fileNameFld.text = File(event.target).nativePath;
+				
+				// Event Handler
+				csvFile.addEventListener(Event.COMPLETE, loadComplete);
+				csvFile.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
+				
+				
+				// load file into app memory
+				csvFile.load();
+				logWindow.text = "File loaded into application succesfully : " + File(event.target).name.toUpperCase();
+				trace("file loaded into memory");
+			}
+			protected function loadComplete(event:Event):void
+			{
+				var fr:String = csvFile.data.toString();
+				var split:Array = fr.split("\r");
+				var total:Number = 0;
+				for (var x:int = 0; x < split.length; x++)
+				{
+					totalLinesFld.text = x.toString();
+					try{
+						var split2:Array = split[x].toString().split(",");
+						if (split2.length > 1)
+						{
+							if(x==0)
+							{
+								deparmentFld.text = split2[0] + " - " + split2[1].toString().toUpperCase();
+							}
+							else
+							{
+								var tempt:String = split2[4];
+								total += parseFloat(tempt);
+							}
+							totalAmountFld.text = cFormat.format(total.toString());
+						}	
+					}
+					catch (error:ErrorEvent)
+					{
+						trace("Error trying to process CSV file line: " + x + "=>" + error.text);
+					}
+				}
+			}
+			protected function onCancel(e:Event):void
+			{
+				trace("User canceled browse");
+				csvFile = null;
+			}
+			protected function onLoadError(e:IOErrorEvent):void
+			{
+				trace("Error loading file : " + e.text);
+			}
+			protected function onUserIdle(event:Event):void 
+			{
+				trace("Handling user idle event");
+				this.minimize();
+			}
+			protected function onUserPresent(event:Event):void
+			{
+				trace("Handling user present event");
+				this.restore();
+			}
+			protected function onStatusChange(e:StatusEvent):void // Handles when the HTTP Network status has changed.
+			{
+				if (monitor.available) 
+				{
+					currentState = 'main';
+					trace("Network is online");
+					dragMe.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
+					netLabel.visible = false;
+					enableBtns();					
+				} 
+				else 
+				{
+					trace("Network is offline");
+					netLabel.visible = true;
+					disableBtns();
+					
+				}
+			}
+			protected function disableBtns():void
+			{
+				uploadBtn.enabled = false;
+				emailSendBtn.enabled = false;
+				trace("Upload & SendEmail Buttons Disabled");
+			}
+			protected function enableBtns():void
+			{
+				uploadBtn.enabled = true;
+				emailSendBtn.enabled = true;
+				trace("Upload & SendEmail Buttons Enabled");
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<mx:CurrencyFormatter id="cFormat" precision="2" currencySymbol="$" useThousandsSeparator="true"/>
+		<!--<mx:HTTPService id="emailService" url="http://www.xoniq.net/pet2/email2.php" method="POST" resultFormat="xml" result="emailResult()" useProxy="false"/>-->
+	</fx:Declarations>
+	
+	<s:states>
+		<s:State fc:color="0x0081cc" name="loader"/>
+		<s:State fc:color="0x00cc21" name="main"/>
+		<s:State fc:color="0x0003a3" name="Main_LogWindow"/>
+		<s:State fc:color="0xff5f08" name="Main_LogWindow_msgWindow"/>
+		<s:State fc:color="0xdf08ff" name="Main_msgWindow"/>
+	</s:states>
+	
+	<fx:DesignLayer id="designlayer1" d:id="3" d:userLabel="Email Us window" visible.loader="false">
+		<s:Rect height="364" id="rect4" d:userLabel="RectangleMsg" visible.loader="false" width="368" x="498.5" x.Main_LogWindow="126.5" x.main="126.5" y="5.5">
+			<s:fill>
+				<s:SolidColor color="#333333"/>
+			</s:fill>
+			<s:stroke>
+				<s:SolidColorStroke caps="none" joints="miter" miterLimit="10" weight="3"/>
+			</s:stroke>
+		</s:Rect>
+		<s:Rect height="309" id="rect2" d:userLabel="emailWhiteBoxCanvas" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" width="355" x="504.5" y="29.5">
+			<s:stroke>
+				<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+			</s:stroke>
+		</s:Rect>
+		<s:TextInput id="emailSubject" maxChars.Main_msgWindow="30" skinClass="components.emailSubjectBoxTextInput" toolTip="Type s subject" d:userLabel="emailSubjectBox" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" x="577" y="85" color="#000000" fontSize="14"/>
+		<s:TextInput id="emailName" maxChars.Main_msgWindow="30" skinClass="components.emailPersonNameTextInput" toolTip="Type your name here" d:userLabel="emailPersonName" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" x="577" y="58" color="#000000" fontSize="14"/>
+		<s:TextInput id="emailUserEmail" maxChars="30" skinClass="components.emailUserEmailB_TextInput" toolTip="Type your email" d:userLabel="emailUserEmailBox" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" x="577" y="112" color="#000000" fontSize="14"/>
+		<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="14" id="msgStatus" d:id="6" kerning="on" tabStops="S36" text="Email Us" d:userLabel="Email Us" flm:variant="2" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" whiteSpaceCollapse="preserve" x="515" y="12"/>
+		<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" id="richtext15" d:id="7" kerning="on" tabStops="S36 S72 S108 S144 S180 S216 S252 S288 S324" text="Send us your questions and problems. Let us know about you." d:userLabel="Send us your questions and problems. Let us know a..." flm:variant="3" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" whiteSpaceCollapse="preserve" x="515" y="35"/>
+		<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" id="richtext14" d:id="8" kerning="on" tabStops="S36" text="Subject:" d:userLabel="Subject:" flm:variant="4" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" whiteSpaceCollapse="preserve" x="525" y="92"/>
+		<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" id="richtext13" d:id="9" kerning="on" tabStops="S36" text="Name:" d:userLabel="Name:" flm:variant="5" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" whiteSpaceCollapse="preserve" x="532" y="66"/>
+		<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" id="richtext12" d:id="10" kerning="on" tabStops="S36" text="Your Email:" d:userLabel="Your Email:" flm:variant="6" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" whiteSpaceCollapse="preserve" x="508" y="119"/>
+		<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" id="richtext11" d:id="11" kerning="on" tabStops="S36" text="Message:" d:userLabel="Message:" flm:variant="7" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" whiteSpaceCollapse="preserve" x="515" y="216"/>
+		<s:Button buttonMode="true" id="emailSendBtn" skinClass="components.SendButton" toolTip="Send Message" d:userLabel="SenfMsgBtn" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" x="724" y="344"/>
+		<s:Button buttonMode="true" click="emailCloseBtn_clickHandler()" id="emailCloseBtn" skinClass="components.CloseButton2" toolTip="Close" d:userLabel="EmailCloseBtn" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" x="788" y="343"/>
+		<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="11" id="richtext9" d:id="17" kerning="on" tabStops="S36 S72 S108 S144 S180" text="Personal information will not be saved." d:userLabel="Personal information will not be saved." flm:variant="11" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" whiteSpaceCollapse="preserve" x="525" y="348"/>
+		<s:CheckBox buttonMode="true" id="cb" includeIn="Main_LogWindow_msgWindow,Main_msgWindow" label="Check to receive a copy in your email." skinClass="components.Checkbox1" x="580" y="139"/>
+		<lib:Info height="15" id="info2" flm:knockout="false" visible.Main_LogWindow="false" visible.loader="false" visible.main="false" width="15" x="508" y="342"/>
+		<s:TextArea height="162" id="emailMsg" includeIn="Main_LogWindow_msgWindow,Main_msgWindow" width="265" x="578.5" y="165.5" maxChars="500" color="#000000" fontSize="14"/>
+	</fx:DesignLayer>
+	<fx:DesignLayer d:id="18" d:userLabel="Main Window English">
+		<s:Rect height="630" height.Main_msgWindow="375" height.loader="118" height.main="375" id="rect3" d:userLabel="RectangleLog" width="500" x="0" y="0">
+			<s:fill>
+				<s:SolidColor color="#333333"/>
+			</s:fill>
+			<s:stroke>
+				<s:SolidColorStroke caps="none" joints="miter" miterLimit="10" weight="2"/>
+			</s:stroke>
+		</s:Rect>
+		<fx:DesignLayer id="designlayer3" d:id="19" d:userLabel="Log Window" visible.Main_msgWindow="false" visible.loader="false" visible.main="false">
+			<s:TextArea id="logWindow" height="224" d:userLabel="LogWindow" width="473" x="15.5" y="377.5" editable="false" fontSize="9" color="#000000"/>
+			<s:Button buttonMode="true" click="rollUpBtn_clickHandler()" skinClass="components.CloseButton" toolTip="Roll Up" d:userLabel="RollUpBtn" x="414" y="607" id="rollUpBtn"/>
+			<s:Button buttonMode="true" skinClass="components.SaveLogButton" toolTip="Save Log" d:userLabel="SaveLogBtn" x="325" y="607" id="saveLogBtn"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="11" d:id="26" kerning="on" tabStops="S36 S72 S108 S144 S180 S216 S252" text="Here you can see the upload progress and even save it." d:userLabel="Here you can see the upload progress and even save..." flm:variant="15" whiteSpaceCollapse="preserve" x="26" y="610"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="14" d:id="27" kerning="on" tabStops="S36 S72" text="Log Window" d:userLabel="Log Window" flm:variant="16" whiteSpaceCollapse="preserve" x="26" y="362"/>
+		</fx:DesignLayer>
+		<s:Line id="line2" d:locked="true" d:userLabel="whiteLIne" visible.loader="false" x="11.5" y="112.5" yFrom="257">
+			<s:stroke>
+				<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+			</s:stroke>
+		</s:Line>
+		<s:Line id="line1" d:locked="true" d:userLabel="whiteLIne" visible.loader="false" x="492.5" y="112.5" yFrom="257">
+			<s:stroke>
+				<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+			</s:stroke>
+		</s:Line>
+		<s:TextInput editable="false" id="fileNameFld" skinClass="components.FileNameBarTextInput" visible.loader="false" x="27" y="129" color.main="#000000" fontSize.main="14" fontWeight.main="normal" fontWeight.Main_LogWindow="normal" fontSize.Main_LogWindow="14" color.Main_LogWindow="#000000" fontSize.Main_LogWindow_msgWindow="14" color.Main_LogWindow_msgWindow="#000000" fontWeight.Main_LogWindow_msgWindow="normal" fontSize.Main_msgWindow="14" color.Main_msgWindow="#000000" fontWeight.Main_msgWindow="normal"/>
+		<s:TextInput editable="false" id="totalLinesFld" skinClass="components.TotalTransactio_TextInput2" visible.loader="false" x="178" y="210" color.main="#000000" fontSize.main="14" fontWeight.main="bold" fontWeight.Main_LogWindow="bold" fontSize.Main_LogWindow="14" color.Main_LogWindow="#000000" fontSize.Main_LogWindow_msgWindow="14" color.Main_LogWindow_msgWindow="#000000" fontWeight.Main_LogWindow_msgWindow="bold" fontSize.Main_msgWindow="14" color.Main_msgWindow="#000000" fontWeight.Main_msgWindow="bold"/>
+		<s:TextInput editable="false" id="totalAmountFld" skinClass="components.TotalTransactio_TextInput3" visible.loader="false" x="178" y="236" fontSize.Main_msgWindow="14" color.Main_msgWindow="#000000" fontWeight.Main_msgWindow="bold" fontSize.Main_LogWindow_msgWindow="14" color.Main_LogWindow_msgWindow="#000000" fontWeight.Main_LogWindow_msgWindow="bold" fontSize.main="14" color.main="#000000" fontWeight.main="bold" color.Main_LogWindow="#000000" fontWeight.Main_LogWindow="bold" fontSize.Main_LogWindow="14"/>
+		<s:TextInput editable="false" id="deparmentFld" skinClass="components.TotalTransactio_TextInput4" visible.loader="false" x="298" y="236" fontSize.main="14" color.main="#000000" fontWeight.main="bold" fontSize.Main_LogWindow="14" color.Main_LogWindow="#000000" fontWeight.Main_LogWindow="bold" fontSize.Main_LogWindow_msgWindow="14" color.Main_LogWindow_msgWindow="#000000" fontWeight.Main_LogWindow_msgWindow="bold" fontSize.Main_msgWindow="14" color.Main_msgWindow="#000000" fontWeight.Main_msgWindow="bold"/>
+		<s:Button click="browseCSV(event);" buttonMode="true" id="browseBtn" skinClass="components.BButton" toolTip="Browse CSV" d:userLabel="BrowseBtn" visible.loader="false" x="400" y="153"/>
+		<s:Button buttonMode="true" click="button_clickHandler()" id="viewLogBtn" skinClass="components.ViewLogButton" toolTip="View Log" d:userLabel="ViewLogBtn" visible.loader="false" x="322" y="348"/>
+		<s:Button id="exitBtn" d:userLabel="ExitBtn" x="414" y="348" buttonMode="true"
+				  click="closeApp(event);" skinClass="components.ExitBtnButton"
+				  toolTip="Exit Application"
+				  visible.loader="false"
+				  x.main="414" y.main="347"/>
+		<s:Button buttonMode="true" id="cancelBtn" skinClass="components.CancelButton" toolTip="Cancel Progress" d:userLabel="CancelBtn" visible.loader="false" x="414" y="292"/>
+		<s:Button buttonMode="true" id="uploadBtn" skinClass="components.UploadButton" toolTip="Upload Batch" d:userLabel="UploadBtn" visible.loader="false" visible="false" x="414" y="268"/>
+		<s:Group id="group2" d:userLabel="Texts" visible.loader="false" x="22" x.Main_LogWindow="3" x.Main_LogWindow_msgWindow="3" x.Main_msgWindow="3" x.main="3" y="5">
+			<s:RichText visible="false" ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="14" id="richtext8" d:id="39" kerning="on" tabStops="S36 S72 S108 S144 S180 S216 S252 S288 S324 S360" text="Please verify the data below before pushing the upload button." d:userLabel="Please verify the data below before pushing the up..." flm:variant="22" whiteSpaceCollapse="preserve" x="43" x.Main_LogWindow="62" x.Main_LogWindow_msgWindow="62" x.Main_msgWindow="62" x.main="62" y="177"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="14" id="richtext7" d:id="40" kerning="on" tabStops="S36" text="File Name:" d:userLabel="File Name:" flm:variant="23" whiteSpaceCollapse="preserve" x="5" x.Main_LogWindow="24" x.Main_LogWindow_msgWindow="24" x.Main_msgWindow="24" x.main="24" y="111" fontFamily.main="Arial"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="14" id="richtext6" d:id="41" kerning="on" tabStops="S36 S72" text="Total amout:" d:userLabel="Total amout:" flm:variant="24" whiteSpaceCollapse="preserve" x="74" x.Main_LogWindow="93" x.Main_LogWindow_msgWindow="93" x.Main_msgWindow="93" x.main="93" y="237"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="14" id="richtext5" d:id="42" kerning="on" tabStops="S36 S72 S108 S144" text="Batch to be posted into:" d:userLabel="Batch to be posted into:" flm:variant="25" whiteSpaceCollapse="preserve" x="280" x.Main_LogWindow="299" x.Main_LogWindow_msgWindow="299" x.Main_msgWindow="299" x.main="299" y="210"/>
+			<s:Button buttonMode="true" id="englishBtn" skinClass="components.EnglishButton" toolTip="English Version" d:userLabel="EnglishLinkBtn" x="378" x.Main_LogWindow="397" x.Main_LogWindow_msgWindow="397" x.Main_msgWindow="397" x.main="397" y="1" />
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="14" id="richtext4" d:id="44" kerning="on" tabStops="S36 S72 S108 S144" text="Total of lines to transfer:" d:userLabel="Total of lines to transfer:" flm:variant="27" whiteSpaceCollapse="preserve" x="0" x.Main_LogWindow="19" x.Main_LogWindow_msgWindow="19" x.Main_msgWindow="19" x.main="19" y="210"/>
+			<s:Button buttonMode="true" id="spanishBtn" skinClass="components.Espa_olButton" toolTip="Versión Español" d:userLabel="EspañolLlinkBtn" x="425" x.Main_LogWindow="444" x.Main_LogWindow_msgWindow="444" x.Main_msgWindow="444" x.main="444" y="1"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" fontSize="11" id="richtext3" d:id="46" kerning="on" tabStops="S36 S72 S108 S144 S180 S216 S252" text="If you encounter any errors or problems please contact us" d:userLabel="If you encounter any errors or problems please con..." flm:variant="29" whiteSpaceCollapse="preserve" x="32" x.Main_LogWindow="51" x.Main_LogWindow_msgWindow="51" x.Main_msgWindow="51" x.main="51" y="319"/>
+			<s:Button buttonMode="true" click="emailUsLInk2_clickHandler()" id="supportLink" skinClass="components.support_paytech_Button" toolTip="Email Us" d:userLabel="EmailUsLInk2" x="316" x.Main_LogWindow="335" x.Main_LogWindow_msgWindow="335" x.Main_msgWindow="335" x.main="335" y="318"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" id="richtext2" d:id="48" kerning="on" tabStops="S36" text="|" d:userLabel="|" flm:variant="31" whiteSpaceCollapse="preserve" x="418" x.Main_LogWindow="437" x.Main_LogWindow_msgWindow="437" x.Main_msgWindow="437" x.main="437" y="0"/>
+			<s:RichText ai:aa="2" color="#CCCCCC" columnCount="1" fontFamily="Arial" id="richtext1" d:id="49" kerning="on" tabStops="S36 S72 S108 S144" text="Is the above information correct?" d:userLabel="Is the above information correct?" flm:variant="32" whiteSpaceCollapse="preserve" x="9" x.Main_LogWindow="28" x.Main_LogWindow_msgWindow="28" x.Main_msgWindow="28" x.main="28" y="266"/>
+			<s:RichText buttonMode="true" color="#CCCCCC" fontFamily="Arial Bold" fontSize="14" id="dragMe" includeIn="Main_LogWindow,Main_LogWindow_msgWindow,Main_msgWindow,main" tabStops="S0 S50" text="Drag Me" toolTip="Move application window" d:userLabel="Drag Me" x="0" y="0"/>
+			<mx:ProgressBar includeIn="Main_LogWindow,Main_LogWindow_msgWindow,Main_msgWindow,main" width="363" visible="false" color="#000000" labelPlacement="center" id="pBar" indeterminate="true" fontSize="10" x="31" y="288"/>
+		</s:Group>
+		<fx:DesignLayer id="designlayer5" d:id="50" d:userLabel="Upper Icons" visible.loader="false">
+			<lib:Info height="15" id="info1" flm:knockout="false" width="15" x="35" y="319"/>
+			<fx:DesignLayer visible="false" id="designlayer4" d:id="53" d:userLabel="Alert 1">
+				<s:Path data="M 14.686 11.095 L 8.83 0.951 C 8.464 0.317 7.981 0 7.499 0 C 7.017 0 6.534 0.317 6.168 0.951 L 0.312 11.095 C -0.42 12.363 0.179 13.4 1.643 13.4 L 13.355 13.4 C 14.819 13.4 15.418 12.363 14.686 11.095 Z M 13.878 12.164 C 13.86 12.188 13.711 12.284 13.355 12.284 L 1.643 12.284 C 1.287 12.284 1.138 12.188 1.121 12.166 C 1.109 12.139 1.101 11.961 1.278 11.653 L 7.135 1.509 C 7.313 1.201 7.471 1.12 7.498 1.117 C 7.527 1.12 7.685 1.201 7.863 1.509 L 13.72 11.653 C 13.897 11.961 13.889 12.139 13.878 12.164 Z" winding="nonZero" x="46.354" y="179.16">
+					<s:fill>
+						<s:SolidColor color="#ED1C24"/>
+					</s:fill>
+				</s:Path>
+				<s:Ellipse height="1" width="2" x="53" y="189">
+					<s:fill>
+						<s:SolidColor color="#FBB03B"/>
+					</s:fill>
+				</s:Ellipse>
+				<s:Rect height="4" width="2" x="53" y="184">
+					<s:fill>
+						<s:SolidColor color="#FBB03B"/>
+					</s:fill>
+				</s:Rect>
+			</fx:DesignLayer>
+			<s:Button buttonMode="true" skinClass="components.Button1" toolTip="Help" d:userLabel="HelpLinkBtn" x="475" y="53"/>
+			<s:Button buttonMode="true" click="homeLinkBtn_clickHandler()" skinClass="components.Button2" toolTip="Home Page" d:userLabel="HomeLinkBtn" x="475" y="29"/>
+			<s:Button buttonMode="true" click="emailLinkBtn_clickHandler()" skinClass="components.EmailLinkButton2" toolTip="Email Us" d:userLabel="EmailLinkBtn" x="475" y="78"/>
+		</fx:DesignLayer>
+		<s:Line id="line3" d:locked="true" d:userLabel="whiteLIne" x="138.5" xTo="302" y="89.5">
+			<s:stroke>
+				<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+			</s:stroke>
+		</s:Line>
+		<s:Group d:locked="true" d:userLabel="LogoGroup" x="42" y="12">
+			<s:Path data="M 0.5 1.315 C 3.212 0.908 6.997 0.5 12.364 0.5 C 17.787 0.5 21.685 1.721 24.17 3.756 C 26.487 5.677 28.125 8.758 28.125 12.539 C 28.125 16.202 26.994 19.342 24.735 21.436 C 21.741 24.342 17.221 25.738 11.686 25.738 C 10.161 25.738 8.805 25.622 7.73 25.39 L 7.73 40.042 L 0.5 40.042 L 0.5 1.315 Z M 7.73 19.575 C 8.747 19.865 10.104 19.982 11.799 19.982 C 17.391 19.982 20.893 17.365 20.893 12.713 C 20.893 8.177 17.448 6.143 12.419 6.143 C 10.104 6.143 8.522 6.315 7.73 6.49 L 7.73 19.575 Z" winding="nonZero" x="97.89" y="5.679">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+				<s:stroke>
+					<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+				</s:stroke>
+			</s:Path>
+			<s:Path data="M 18.037 6.606 L 1.025 6.711 L 5.835 0.5 L 37.64 0.5 L 37.64 6.606 L 25.323 6.606 L 25.323 39.693 L 18.037 39.693 L 18.037 6.606 Z" winding="nonZero" x="146.263" y="4.873">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+				<s:stroke>
+					<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+				</s:stroke>
+			</s:Path>
+			<s:Path data="M 23.887 22.481 L 7.788 22.481 L 7.788 33.647 L 25.752 33.647 L 25.752 39.693 L 0.5 39.693 L 0.5 0.5 L 24.848 0.5 L 20.001 6.548 L 7.788 6.548 L 7.788 16.434 L 23.887 16.434 L 23.887 22.481 Z" winding="nonZero" x="125.087" y="4.886">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+				<s:stroke>
+					<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+				</s:stroke>
+			</s:Path>
+			<s:Path data="M 0 0.559 C 1.861 0.279 4.459 0 8.143 0 C 11.863 0 14.539 0.841 16.245 2.236 C 17.835 3.556 18.959 5.667 18.959 8.263 C 18.959 10.775 18.183 12.933 16.632 14.368 C 14.578 16.362 11.476 17.321 7.676 17.321 C 6.629 17.321 5.699 17.242 4.962 17.081 L 4.962 27.137 L 0 27.137 L 0 0.559 Z M 4.962 13.091 C 5.662 13.292 6.591 13.367 7.754 13.367 C 11.593 13.367 13.996 11.573 13.996 8.381 C 13.996 5.267 11.629 3.872 8.181 3.872 C 6.591 3.872 5.506 3.99 4.962 4.112 L 4.962 13.091 Z" winding="nonZero" x="97.745" y="47.332">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 17.097 15.164 C 17.097 17 17.213 18.753 17.407 19.912 L 12.91 19.912 L 12.56 17.678 L 12.443 17.678 C 11.242 19.233 9.073 20.393 6.358 20.393 C 2.133 20.393 0 17.398 0 14.603 C 0 9.737 4.303 7.142 12.134 7.181 L 12.134 6.942 C 12.134 5.906 11.746 3.512 7.987 3.55 C 5.97 3.55 3.761 4.226 2.365 5.147 L 1.396 1.833 C 2.985 0.836 5.584 0 8.762 0 C 15.197 0 17.097 4.11 17.097 8.418 L 17.097 15.164 Z M 12.252 10.493 C 8.336 10.414 5.002 11.252 5.002 14.045 C 5.002 15.841 6.241 16.759 7.947 16.759 C 10.119 16.759 11.631 15.323 12.134 13.926 C 12.252 13.568 12.252 13.167 12.252 12.849 L 12.252 10.493 Z" winding="nonZero" x="114.807" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 5.543 0 L 9.382 10.372 C 9.77 11.531 10.273 13.125 10.585 14.163 L 10.699 14.163 C 11.05 13.087 11.436 11.531 11.824 10.292 L 15.158 0 L 20.586 0 L 15.431 13.048 C 12.328 21.305 10.429 24.221 8.179 26.017 C 6.165 27.652 4.11 28.212 2.79 28.33 L 1.782 24.019 C 2.559 23.9 3.605 23.541 4.613 22.902 C 5.584 22.346 6.785 21.189 7.561 19.672 C 7.754 19.353 7.87 19.07 7.87 18.834 C 7.87 18.635 7.832 18.314 7.597 17.794 L 0 0 L 5.543 0 Z" winding="nonZero" x="130.59" y="55.038">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 7.675 0 L 7.675 5.03 L 12.523 5.03 L 12.523 8.858 L 7.675 8.858 L 7.675 16.958 C 7.675 19.355 8.179 20.749 10.273 20.749 C 11.281 20.749 11.746 20.672 12.329 20.513 L 12.444 24.383 C 11.669 24.663 10.312 24.942 8.685 24.942 C 6.822 24.942 5.271 24.222 4.341 23.227 C 3.294 22.027 2.829 20.152 2.829 17.679 L 2.829 8.858 L 0 8.858 L 0 5.03 L 2.829 5.03 L 2.829 1.314 L 7.675 0 Z" winding="nonZero" x="148.233" y="50.008">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 4.73 11.611 C 4.885 14.883 7.754 16.558 11.089 16.558 C 13.57 16.558 15.277 16.199 16.903 15.603 L 17.68 19.074 C 15.895 19.793 13.53 20.393 10.429 20.393 C 3.917 20.393 0 16.443 0 10.451 C 0 5.465 3.218 0 9.964 0 C 16.789 0 18.803 5.707 18.803 9.616 C 18.803 10.451 18.725 11.21 18.61 11.611 L 4.73 11.611 Z M 14.073 8.059 C 14.112 6.705 13.415 3.428 9.654 3.428 C 6.359 3.428 5 6.184 4.73 8.059 L 14.073 8.059 Z" winding="nonZero" x="159.322" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 16.515 19.273 C 15.391 19.793 13.182 20.393 10.468 20.393 C 4.07 20.393 0 16.321 0 10.377 C 0 4.587 4.11 0 11.281 0 C 13.259 0 15.236 0.437 16.515 0.996 L 15.624 4.79 C 14.732 4.309 13.413 3.908 11.475 3.908 C 7.521 3.908 5.079 6.584 5.117 10.133 C 5.117 14.125 7.986 16.36 11.475 16.36 C 13.413 16.36 14.77 15.921 15.817 15.483 L 16.515 19.273 Z" winding="nonZero" x="177.005" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 0 0 L 5.002 0 L 5.002 11.972 L 5.08 11.972 C 5.74 11.015 6.631 10.134 7.717 9.579 C 8.724 9.021 9.965 8.662 11.206 8.662 C 14.501 8.662 18.456 10.737 18.456 17.4 L 18.456 28.574 L 13.454 28.574 L 13.454 18.079 C 13.454 15.005 12.291 12.814 9.344 12.814 C 7.211 12.814 5.778 14.286 5.236 15.685 C 5.04 16.123 5.002 16.603 5.002 17.161 L 5.002 28.574 L 0 28.574 L 0 0 Z" winding="nonZero" x="193.677" y="45.896">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 16.05 15.085 L 5.004 15.085 L 5.004 22.751 L 17.33 22.751 L 17.33 26.899 L 0 26.899 L 0 0 L 16.709 0 L 16.709 4.151 L 5.004 4.151 L 5.004 10.936 L 16.05 10.936 L 16.05 15.085 Z" winding="nonZero" x="218.608" y="47.57">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 17.101 15.164 C 17.101 17 17.216 18.753 17.411 19.912 L 12.912 19.912 L 12.562 17.678 L 12.447 17.678 C 11.245 19.233 9.073 20.393 6.36 20.393 C 2.134 20.393 0 17.398 0 14.603 C 0 9.737 4.306 7.142 12.137 7.181 L 12.137 6.942 C 12.137 5.906 11.748 3.512 7.989 3.55 C 5.975 3.55 3.764 4.226 2.368 5.147 L 1.397 1.833 C 2.987 0.836 5.583 0 8.766 0 C 15.2 0 17.101 4.11 17.101 8.418 L 17.101 15.164 Z M 12.253 10.493 C 8.338 10.414 5.004 11.252 5.004 14.045 C 5.004 15.841 6.246 16.759 7.951 16.759 C 10.122 16.759 11.633 15.323 12.137 13.926 C 12.253 13.568 12.253 13.167 12.253 12.849 L 12.253 10.493 Z" winding="nonZero" x="234.971" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.007 15.204 C 2.171 15.963 4.456 16.759 6.358 16.759 C 8.644 16.759 9.614 15.841 9.614 14.603 C 9.614 13.249 8.76 12.609 6.241 11.85 C 2.246 10.695 0.541 8.58 0.541 6.142 C 0.541 2.712 3.449 0 8.179 0 C 10.466 0 12.483 0.555 13.647 1.236 L 12.677 4.747 C 11.861 4.309 10.118 3.55 8.22 3.55 C 6.434 3.55 5.389 4.388 5.389 5.624 C 5.389 6.903 6.434 7.503 9.031 8.302 C 12.793 9.457 14.42 11.21 14.46 14.245 C 14.46 17.636 11.786 20.393 6.317 20.393 C 3.761 20.393 1.551 19.793 0 18.954 L 1.007 15.204 Z" winding="nonZero" x="252.464" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 5.547 0 L 9.386 10.372 C 9.772 11.531 10.277 13.125 10.585 14.163 L 10.7 14.163 C 11.052 13.087 11.44 11.531 11.827 10.292 L 15.162 0 L 20.589 0 L 15.433 13.048 C 12.331 21.305 10.431 24.221 8.182 26.017 C 6.167 27.652 4.112 28.212 2.793 28.33 L 1.786 24.019 C 2.563 23.9 3.606 23.541 4.614 22.902 C 5.586 22.346 6.786 21.189 7.562 19.672 C 7.759 19.353 7.872 19.07 7.872 18.834 C 7.872 18.635 7.836 18.314 7.602 17.794 L 0 0 L 5.547 0 Z" winding="nonZero" x="264.868" y="55.038">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 8.377 4.192 L 0 4.192 L 0 0 L 21.828 0 L 21.828 4.192 L 13.375 4.192 L 13.375 26.899 L 8.377 26.899 L 8.377 4.192 Z" winding="nonZero" x="284.994" y="47.57">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 0.155 6.982 C 0.155 4.11 0.118 2.234 0 0.48 L 4.304 0.48 L 4.458 4.428 L 4.613 4.428 C 5.62 1.436 8.027 0 10.235 0 C 10.7 0 11.01 0.038 11.438 0.12 L 11.438 4.865 C 10.973 4.79 10.507 4.706 9.849 4.706 C 7.288 4.706 5.66 6.263 5.273 8.539 C 5.194 8.979 5.155 9.457 5.155 9.895 L 5.155 19.912 L 0.155 19.912 L 0.155 6.982 Z" winding="nonZero" x="303.723" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 17.095 15.164 C 17.095 17 17.214 18.753 17.406 19.912 L 12.908 19.912 L 12.56 17.678 L 12.441 17.678 C 11.239 19.233 9.068 20.393 6.358 20.393 C 2.131 20.393 0 17.398 0 14.603 C 0 9.737 4.301 7.142 12.13 7.181 L 12.13 6.942 C 12.13 5.906 11.745 3.512 7.983 3.55 C 5.969 3.55 3.761 4.226 2.365 5.147 L 1.396 1.833 C 2.985 0.836 5.582 0 8.758 0 C 15.196 0 17.095 4.11 17.095 8.418 L 17.095 15.164 Z M 12.248 10.493 C 8.332 10.414 5 11.252 5 14.045 C 5 15.841 6.242 16.759 7.945 16.759 C 10.118 16.759 11.63 15.323 12.13 13.926 C 12.248 13.568 12.248 13.167 12.248 12.849 L 12.248 10.493 Z" winding="nonZero" x="313.07" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 0.156 6.343 C 0.156 4.11 0.116 2.152 0 0.48 L 4.383 0.48 L 4.612 3.587 L 4.73 3.587 C 5.544 2.113 7.754 0 11.28 0 C 14.617 0 18.608 2.075 18.608 8.738 L 18.608 19.912 L 13.608 19.912 L 13.608 9.376 C 13.608 6.303 12.409 4.11 9.537 4.11 C 7.366 4.11 5.932 5.664 5.39 7.142 C 5.233 7.541 5.157 8.141 5.157 8.658 L 5.157 19.912 L 0.156 19.912 L 0.156 6.343 Z" winding="nonZero" x="331.602" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.011 15.204 C 2.172 15.963 4.462 16.759 6.36 16.759 C 8.649 16.759 9.617 15.841 9.617 14.603 C 9.617 13.249 8.767 12.609 6.244 11.85 C 2.252 10.695 0.548 8.58 0.548 6.142 C 0.548 2.712 3.454 0 8.184 0 C 10.471 0 12.486 0.555 13.649 1.236 L 12.683 4.747 C 11.867 4.309 10.121 3.55 8.221 3.55 C 6.438 3.55 5.391 4.388 5.391 5.624 C 5.391 6.903 6.438 7.503 9.038 8.302 C 12.798 9.457 14.424 11.21 14.464 14.245 C 14.464 17.636 11.79 20.393 6.323 20.393 C 3.763 20.393 1.553 19.793 0 18.954 L 1.011 15.204 Z" winding="nonZero" x="350.64" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 2.596 29.053 L 2.596 13.45 L 0 13.45 L 0 9.622 L 2.596 9.622 L 2.596 8.821 C 2.596 6.186 3.334 3.512 5.039 1.916 C 6.552 0.521 8.531 0 10.236 0 C 11.554 0 12.602 0.24 13.378 0.479 L 13.105 4.389 C 12.562 4.193 11.866 4.033 10.934 4.033 C 8.413 4.033 7.56 6.107 7.56 8.623 L 7.56 9.622 L 11.94 9.622 L 11.94 13.45 L 7.6 13.45 L 7.6 29.053 L 2.596 29.053 Z" winding="nonZero" x="363.4" y="45.417">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 4.728 11.611 C 4.883 14.883 7.752 16.558 11.086 16.558 C 13.567 16.558 15.273 16.199 16.904 15.603 L 17.68 19.074 C 15.896 19.793 13.531 20.393 10.428 20.393 C 3.917 20.393 0 16.443 0 10.451 C 0 5.465 3.217 0 9.965 0 C 16.787 0 18.803 5.707 18.803 9.616 C 18.803 10.451 18.724 11.21 18.608 11.611 L 4.728 11.611 Z M 14.072 8.059 C 14.112 6.705 13.413 3.428 9.653 3.428 C 6.357 3.428 5 6.184 4.728 8.059 L 14.072 8.059 Z" winding="nonZero" x="372.979" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 0.155 6.982 C 0.155 4.11 0.115 2.234 0 0.48 L 4.305 0.48 L 4.46 4.428 L 4.612 4.428 C 5.62 1.436 8.022 0 10.233 0 C 10.699 0 11.01 0.038 11.437 0.12 L 11.437 4.865 C 10.973 4.79 10.507 4.706 9.847 4.706 C 7.288 4.706 5.659 6.263 5.271 8.539 C 5.193 8.979 5.153 9.457 5.153 9.895 L 5.153 19.912 L 0.155 19.912 L 0.155 6.982 Z" winding="nonZero" x="391.862" y="54.558">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.697 0 L 2.431 2.958 C 2.601 3.657 2.744 4.369 2.886 5.109 L 2.914 5.109 C 3.044 4.38 3.267 3.657 3.461 2.972 L 4.363 0 L 5.746 0 L 6.594 2.89 C 6.804 3.657 7.001 4.396 7.158 5.109 L 7.182 5.109 C 7.286 4.38 7.458 3.657 7.653 2.876 L 8.425 0 L 10.067 0 L 7.953 6.547 L 6.346 6.547 L 5.538 3.886 C 5.326 3.171 5.173 2.569 5.001 1.763 L 4.975 1.763 C 4.831 2.58 4.661 3.212 4.456 3.871 L 3.593 6.547 L 1.987 6.547 L 0 0 L 1.697 0 Z" winding="nonZero" x="285.125" y="33.618">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.696 0 L 2.428 2.958 C 2.596 3.657 2.74 4.369 2.886 5.109 L 2.909 5.109 C 3.04 4.38 3.264 3.657 3.459 2.972 L 4.358 0 L 5.745 0 L 6.591 2.89 C 6.802 3.657 6.997 4.396 7.154 5.109 L 7.18 5.109 C 7.285 4.38 7.454 3.657 7.65 2.876 L 8.419 0 L 10.066 0 L 7.952 6.547 L 6.344 6.547 L 5.532 3.886 C 5.325 3.171 5.169 2.569 4.997 1.763 L 4.974 1.763 C 4.83 2.58 4.659 3.212 4.45 3.871 L 3.589 6.547 L 1.982 6.547 L 0 0 L 1.696 0 Z" winding="nonZero" x="295.122" y="33.618">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.695 0 L 2.429 2.958 C 2.599 3.657 2.743 4.369 2.886 5.109 L 2.911 5.109 C 3.044 4.38 3.263 3.657 3.458 2.972 L 4.36 0 L 5.746 0 L 6.595 2.89 C 6.804 3.657 6.999 4.396 7.157 5.109 L 7.181 5.109 C 7.286 4.38 7.456 3.657 7.651 2.876 L 8.423 0 L 10.066 0 L 7.951 6.547 L 6.345 6.547 L 5.538 3.886 C 5.327 3.171 5.173 2.569 5 1.763 L 4.974 1.763 C 4.83 2.58 4.66 3.212 4.452 3.871 L 3.593 6.547 L 1.983 6.547 L 0 0 L 1.695 0 Z" winding="nonZero" x="305.114" y="33.618">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.032 2.178 C 0.417 2.178 0 1.707 0 1.089 C 0 0.458 0.417 0 1.044 0 C 1.671 0 2.076 0.458 2.089 1.089 C 2.089 1.707 1.671 2.178 1.044 2.178 L 1.032 2.178 Z" winding="nonZero" x="314.225" y="38.147">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 0.051 2.366 C 0.051 1.534 0.038 0.807 0 0.162 L 1.475 0.162 L 1.556 1.237 L 1.577 1.237 C 2.103 0.457 2.923 0 4.048 0 C 5.563 0 6.96 1.237 6.96 3.321 C 6.96 5.699 5.365 6.869 3.786 6.869 C 2.896 6.869 2.128 6.533 1.761 5.94 L 1.737 5.94 L 1.737 9.397 L 0.051 9.397 L 0.051 2.366 Z M 1.737 3.86 C 1.737 4.005 1.75 4.142 1.773 4.274 C 1.931 4.96 2.571 5.565 3.407 5.565 C 4.53 5.565 5.25 4.746 5.25 3.415 C 5.25 2.299 4.622 1.332 3.459 1.332 C 2.691 1.332 1.985 1.855 1.788 2.689 C 1.761 2.822 1.737 2.958 1.737 3.093 L 1.737 3.86 Z" winding="nonZero" x="317.554" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 5.759 5.108 C 5.759 5.728 5.8 6.318 5.865 6.709 L 4.349 6.709 L 4.231 5.954 L 4.193 5.954 C 3.786 6.478 3.057 6.869 2.144 6.869 C 0.722 6.869 0 5.861 0 4.92 C 0 3.279 1.45 2.405 4.092 2.42 L 4.092 2.341 C 4.092 1.99 3.958 1.184 2.692 1.199 C 2.013 1.199 1.267 1.426 0.797 1.735 L 0.472 0.619 C 1.008 0.283 1.882 0 2.953 0 C 5.121 0 5.759 1.384 5.759 2.836 L 5.759 5.108 Z M 4.126 3.535 C 2.809 3.51 1.687 3.792 1.687 4.732 C 1.687 5.337 2.103 5.645 2.679 5.645 C 3.411 5.645 3.919 5.161 4.092 4.691 C 4.126 4.571 4.126 4.436 4.126 4.328 L 4.126 3.535 Z" winding="nonZero" x="324.802" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.867 0 L 3.161 3.497 C 3.29 3.886 3.458 4.423 3.564 4.771 L 3.604 4.771 C 3.717 4.409 3.851 3.886 3.982 3.468 L 5.106 0 L 6.933 0 L 5.194 4.396 C 4.148 7.178 3.513 8.159 2.755 8.765 C 2.075 9.315 1.384 9.502 0.938 9.543 L 0.599 8.09 C 0.863 8.052 1.214 7.931 1.55 7.715 C 1.879 7.528 2.285 7.138 2.544 6.627 C 2.611 6.52 2.649 6.424 2.649 6.345 C 2.649 6.277 2.636 6.17 2.559 5.995 L 0 0 L 1.867 0 Z" winding="nonZero" x="330.774" y="33.618">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 2.588 0 L 2.588 1.693 L 4.221 1.693 L 4.221 2.984 L 2.588 2.984 L 2.588 5.712 C 2.588 6.518 2.758 6.99 3.46 6.99 C 3.799 6.99 3.959 6.962 4.154 6.908 L 4.194 8.213 C 3.929 8.308 3.474 8.4 2.924 8.4 C 2.301 8.4 1.778 8.16 1.464 7.823 C 1.112 7.418 0.956 6.787 0.956 5.954 L 0.956 2.984 L 0 2.984 L 0 1.693 L 0.956 1.693 L 0.956 0.443 L 2.588 0 Z" winding="nonZero" x="337.37" y="31.925">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.594 3.913 C 1.645 5.013 2.611 5.579 3.732 5.579 C 4.572 5.579 5.145 5.459 5.69 5.256 L 5.953 6.425 C 5.353 6.667 4.555 6.869 3.512 6.869 C 1.317 6.869 0 5.539 0 3.522 C 0 1.841 1.085 0 3.354 0 C 5.653 0 6.333 1.924 6.333 3.241 C 6.333 3.522 6.306 3.777 6.268 3.913 L 1.594 3.913 Z M 4.738 2.716 C 4.756 2.26 4.519 1.156 3.252 1.156 C 2.145 1.156 1.686 2.084 1.594 2.716 L 4.738 2.716 Z" winding="nonZero" x="341.762" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 5.565 6.492 C 5.188 6.667 4.442 6.869 3.53 6.869 C 1.375 6.869 0 5.497 0 3.496 C 0 1.545 1.386 0 3.803 0 C 4.467 0 5.137 0.148 5.565 0.335 L 5.264 1.614 C 4.966 1.453 4.522 1.318 3.869 1.318 C 2.537 1.318 1.714 2.218 1.729 3.415 C 1.729 4.759 2.692 5.513 3.869 5.513 C 4.522 5.513 4.979 5.364 5.329 5.217 L 5.565 6.492 Z" winding="nonZero" x="348.369" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 0 0 L 1.681 0 L 1.681 4.033 L 1.709 4.033 C 1.932 3.707 2.232 3.413 2.597 3.225 C 2.937 3.036 3.357 2.915 3.773 2.915 C 4.882 2.915 6.216 3.615 6.216 5.858 L 6.216 9.624 L 4.53 9.624 L 4.53 6.088 C 4.53 5.052 4.136 4.313 3.146 4.313 C 2.427 4.313 1.943 4.81 1.76 5.281 C 1.695 5.43 1.681 5.59 1.681 5.779 L 1.681 9.624 L 0 9.624 L 0 0 Z" winding="nonZero" x="354.644" y="30.542">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 5.563 6.492 C 5.189 6.667 4.443 6.869 3.529 6.869 C 1.374 6.869 0 5.497 0 3.496 C 0 1.545 1.385 0 3.801 0 C 4.471 0 5.136 0.148 5.563 0.335 L 5.265 1.614 C 4.965 1.453 4.52 1.318 3.869 1.318 C 2.536 1.318 1.714 2.218 1.725 3.415 C 1.725 4.759 2.691 5.513 3.869 5.513 C 4.52 5.513 4.978 5.364 5.33 5.217 L 5.563 6.492 Z" winding="nonZero" x="361.603" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 3.482 6.869 C 1.538 6.869 0 5.55 0 3.496 C 0 1.426 1.446 0 3.615 0 C 5.691 0 7.074 1.426 7.074 3.361 C 7.074 5.686 5.338 6.869 3.494 6.869 L 3.482 6.869 Z M 3.535 5.633 C 4.54 5.633 5.338 4.839 5.338 3.415 C 5.338 2.366 4.803 1.237 3.563 1.237 C 2.296 1.237 1.733 2.313 1.733 3.442 C 1.733 4.759 2.49 5.633 3.524 5.633 L 3.535 5.633 Z" winding="nonZero" x="367.293" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 1.032 2.178 C 0.421 2.178 0 1.707 0 1.089 C 0 0.458 0.421 0 1.045 0 C 1.67 0 2.076 0.458 2.089 1.089 C 2.089 1.707 1.67 2.178 1.045 2.178 L 1.032 2.178 Z" winding="nonZero" x="374.878" y="38.147">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 5.563 6.492 C 5.184 6.667 4.438 6.869 3.525 6.869 C 1.373 6.869 0 5.497 0 3.496 C 0 1.545 1.384 0 3.801 0 C 4.465 0 5.133 0.148 5.563 0.335 L 5.263 1.614 C 4.96 1.453 4.52 1.318 3.863 1.318 C 2.533 1.318 1.712 2.218 1.726 3.415 C 1.726 4.759 2.69 5.513 3.863 5.513 C 4.52 5.513 4.977 5.364 5.328 5.217 L 5.563 6.492 Z" winding="nonZero" x="376.801" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 3.484 6.869 C 1.54 6.869 0 5.55 0 3.496 C 0 1.426 1.448 0 3.615 0 C 5.692 0 7.077 1.426 7.077 3.361 C 7.077 5.686 5.341 6.869 3.499 6.869 L 3.484 6.869 Z M 3.539 5.633 C 4.544 5.633 5.341 4.839 5.341 3.415 C 5.341 2.366 4.804 1.237 3.563 1.237 C 2.296 1.237 1.734 2.313 1.734 3.442 C 1.734 4.759 2.496 5.633 3.522 5.633 L 3.539 5.633 Z" winding="nonZero" x="382.484" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 0.055 2.137 C 0.055 1.384 0.037 0.727 0 0.162 L 1.427 0.162 L 1.501 1.17 L 1.542 1.17 C 1.855 0.673 2.459 0 3.669 0 C 4.569 0 5.275 0.538 5.563 1.29 L 5.593 1.29 C 5.836 0.915 6.113 0.633 6.412 0.43 C 6.814 0.148 7.248 0 7.847 0 C 8.907 0 10.148 0.714 10.148 2.972 L 10.148 6.709 L 8.513 6.709 L 8.513 3.199 C 8.513 2.005 8.058 1.384 7.248 1.384 C 6.62 1.384 6.187 1.829 6.005 2.286 C 5.954 2.461 5.918 2.675 5.918 2.85 L 5.918 6.709 L 4.282 6.709 L 4.282 3.052 C 4.282 2.018 3.842 1.384 3.056 1.384 C 2.365 1.384 1.933 1.95 1.776 2.366 C 1.712 2.542 1.685 2.742 1.685 2.917 L 1.685 6.709 L 0.055 6.709 L 0.055 2.137 Z" winding="nonZero" x="390.269" y="33.457">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+			</s:Path>
+			<s:Path data="M 78.835 21.329 C 83.265 28.262 87.593 43.381 83.868 56.799 C 79.346 73.088 63.236 88.214 43.216 88.281 C 18.126 88.366 -1.216 67.353 0.628 40.856 C 1.404 29.695 6.645 20.178 13.404 13.358 C 19.201 7.509 27.456 1.478 40.119 0.605 C 57.047 -0.563 70.703 8.601 78.835 21.329 Z M 30.827 19.336 C 23.764 22.909 17.32 29.138 16.114 41.255 C 14.355 58.936 27.143 72.34 42.829 72.34 C 61.379 72.34 77.106 51.899 67.22 31.69 C 62.815 22.684 53.069 15.201 39.732 16.944 C 35.573 17.489 33.125 18.173 30.827 19.336 Z" id="path2" d:id="55" flm:variant="33" x="0.009" y="0.382">
+				<s:fill>
+					<s:LinearGradient rotation="344.671" scaleX="84.9572" x="5.477" y="54.651">
+						<s:GradientEntry color="#FFFFFF" ratio="0.0255988"/>
+						<s:GradientEntry color="#7FD0E8" ratio="0.387466"/>
+						<s:GradientEntry color="#7CCFE8" ratio="0.442959"/>
+						<s:GradientEntry color="#6CCBE6" ratio="0.474022"/>
+						<s:GradientEntry color="#5BC7E3" ratio="0.487757"/>
+						<s:GradientEntry color="#44C1E1" ratio="0.500205"/>
+						<s:GradientEntry color="#00B0D8" ratio="0.522472"/>
+						<s:GradientEntry color="#008AA9" ratio="0.855244"/>
+						<s:GradientEntry color="#00708C" ratio="0.988764"/>
+					</s:LinearGradient>
+				</s:fill>
+				<s:stroke>
+					<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+				</s:stroke>
+			</s:Path>
+			<s:Path data="M 28.929 26.571 C 26.346 25.607 24.076 27.544 21.493 26.579 C 21.313 22.819 20.905 19.085 20.272 15.377 C 15.763 21.192 11.254 27.005 6.746 32.819 C 4.728 31.16 2.712 29.505 0.693 27.845 C 5.202 22.032 9.712 16.218 14.22 10.405 C 11.271 9.474 6.286 11.741 2.429 10.915 C 2.156 8.394 1.262 5.945 1.879 3.322 C 9.885 2.634 17.865 1.713 25.82 0.559 C 28.076 9.088 28.486 17.832 28.929 26.571 Z" id="path1" x="28.11" y="28.085">
+				<s:fill>
+					<s:SolidColor color="#1C94A8"/>
+				</s:fill>
+				<s:stroke>
+					<s:SolidColorStroke caps="none" color="#FFFFFF" joints="miter" miterLimit="10" weight="1"/>
+				</s:stroke>
+			</s:Path>
+		</s:Group>
+		<s:RadioButton buttonMode="true" id="noBtn" label="No" selected="true" skinClass="components.RadioButton1" d:userLabel="No" visible.loader="false" x="260" y="268"/>
+		<s:RadioButton buttonMode="true" visible="false" id="yesBtn" label="Yes" skinClass="components.RadioButton2" d:userLabel="Yes" visible.loader="false" x="216" y="268"/>
+	</fx:DesignLayer>
+	<mx:Label visible="false" x="35" y="99" id="netLabel" text="Application can't connect to internet, please verify your network and try again." fontWeight="bold" color="#eb902e" x.main="35" y.main="180" y.Main_LogWindow="180" y.Main_LogWindow_msgWindow="180" y.Main_msgWindow="180"/>
+	<s:transitions>
+		<s:Transition autoReverse="true" fromState="main" toState="Main_LogWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="500" startDelay="0">
+						<s:easer>
+							<s:Bounce/>
+						</s:easer>
+					</s:Resize>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_LogWindow" toState="main">
+			<s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="main" toState="Main_msgWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move autoCenterTransform="true" duration="500" startDelay="0">
+						<s:easer>
+							<s:Bounce/>
+						</s:easer>
+					</s:Move>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailMsg}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="main" toState="Main_LogWindow_msgWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move autoCenterTransform="true" duration="500" startDelay="0">
+						<s:easer>
+							<s:Bounce/>
+						</s:easer>
+					</s:Move>
+				</s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="500" startDelay="0">
+						<s:easer>
+							<s:Bounce/>
+						</s:easer>
+					</s:Resize>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailMsg}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_msgWindow" toState="main">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move autoCenterTransform="true" duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailMsg}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_LogWindow_msgWindow" toState="main">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move autoCenterTransform="true" duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailMsg}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="loader" toState="Original">
+			<s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_LogWindow" toState="Original">
+			<s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="loader" toState="main">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="1500"/>
+					<s:Move autoCenterTransform="true" duration="0" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="500" startDelay="1000">
+						<s:easer>
+							<s:Bounce/>
+						</s:easer>
+					</s:Resize>
+				</s:Parallel>
+				<s:Parallel target="{line2}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{line1}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{fileNameFld}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{totalLinesFld}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{totalAmountFld}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{deparmentFld}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{browseBtn}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{viewLogBtn}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{exitBtn}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{cancelBtn}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{uploadBtn}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{group2}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{designlayer5}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{noBtn}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{yesBtn}">
+					<s:Fade duration="500" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{path1}">
+					<s:Rotate angleBy="360" autoCenterTransform="true" duration="1000" d:noAutoDelete="true" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{designlayer1}">
+					<s:Fade duration="0" startDelay="1500"/>
+				</s:Parallel>
+				<s:Parallel target="{dragMe}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_msgWindow" toState="loader">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{dragMe}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_LogWindow" toState="Main_LogWindow_msgWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move autoCenterTransform="true" duration="500" startDelay="0">
+						<s:easer>
+							<s:Bounce/>
+						</s:easer>
+					</s:Move>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailMsg}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_LogWindow" toState="Main_msgWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0" d:innerChildFade="begin" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_msgWindow" toState="Main_LogWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_msgWindow" toState="Main_LogWindow_msgWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="500" startDelay="0">
+						<s:easer>
+							<s:Bounce/>
+						</s:easer>
+					</s:Resize>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="500" startDelay="500"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_LogWindow_msgWindow" toState="Main_LogWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move autoCenterTransform="true" duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Main_LogWindow_msgWindow" toState="Main_msgWindow">
+			<s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="500" startDelay="500"/>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="500" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="Original" toState="loader">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0" d:innerChildFade="end" startDelay="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition autoReverse="true" fromState="main" toState="Original">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect2}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSubject}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailName}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailUserEmail}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{msgStatus}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext15}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext14}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext13}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext12}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext11}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailSendBtn}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{emailCloseBtn}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext9}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{cb}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{info2}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{group2}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+					<s:Resize duration="0" d:neededForAutoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext8}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext7}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext6}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext5}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{englishBtn}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext4}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{spanishBtn}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext3}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{supportLink}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext2}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext1}">
+					<s:Move autoCenterTransform="true" duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{dragMe}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+		<s:Transition fromState="Main_msgWindow" toState="Original" autoReverse="true">
+			<s:Parallel>
+				<s:Parallel target="{rect4}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{emailMsg}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{rect3}">
+					<s:Resize duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{designlayer3}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+				<s:Parallel target="{group2}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+					<s:Resize duration="0" d:neededForAutoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext8}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext7}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext6}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext5}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{englishBtn}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext4}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{spanishBtn}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext3}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{supportLink}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext2}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{richtext1}">
+					<s:Move duration="0" autoCenterTransform="true"/>
+				</s:Parallel>
+				<s:Parallel target="{dragMe}">
+					<s:Fade duration="0"/>
+				</s:Parallel>
+			</s:Parallel>
+		</s:Transition>
+	</s:transitions>
+</s:WindowedApplication>

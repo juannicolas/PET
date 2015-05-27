@@ -1,0 +1,8 @@
+#Fri Aug 27 18:12:04 AST 2010
+com.adobe.thermo.Publish/buildAccessible=false
+com.adobe.thermo.Publish/buildDeployable=true
+com.adobe.thermo.Publish/buildForAIR=false
+com.adobe.thermo.Publish/buildRedistributable=false
+com.adobe.thermo.Publish/embedFonts=false
+com.adobe.thermo.Publish/outputDirectory=/Users/jcruz/Desktop
+eclipse.preferences.version=1

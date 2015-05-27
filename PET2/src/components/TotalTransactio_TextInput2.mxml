@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:s="library://ns.adobe.com/flex/spark" xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt">
+	<fx:Metadata>[HostComponent("spark.components.TextInput")]</fx:Metadata>
+	<s:states>
+		<s:State name="normal"/>
+		<s:State name="disabled"/>
+	</s:states>
+	<s:Rect height="22" id="rect7" d:userLabel="TotalTransactionsbar" width="110" x="0.5" y="0.5">
+		<s:fill>
+			<s:SolidColor color="#FFFFFF"/>
+		</s:fill>
+		<s:stroke>
+			<s:SolidColorStroke caps="none" color="#999999" joints="miter" miterLimit="10" weight="1"/>
+		</s:stroke>
+	</s:Rect>
+	<s:RichEditableText x="5" y="5" width="101" heightInLines="1" id="textDisplay" textAlign="center" fontFamily.normal="Arial Bold" editable.normal="false" tabStops.normal="S0 S50 S100" fontFamily.disabled="Arial"/>
+</s:Skin>

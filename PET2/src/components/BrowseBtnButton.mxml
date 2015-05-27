@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:s="library://ns.adobe.com/flex/spark" xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:lib="assets.graphics.PET.*" xmlns:ai="http://ns.adobe.com/ai/2009" xmlns:flm="http://ns.adobe.com/flame/2008">
+	<fx:Metadata>[HostComponent("spark.components.Button")]</fx:Metadata>
+	<s:states>
+		<s:State name="up"/>
+		<s:State name="over"/>
+		<s:State name="down"/>
+		<s:State name="disabled"/>
+	</s:states>
+	<s:Group buttonMode="true" toolTip="Browse CSV" d:userLabel="BrowseBtn" x="0" y="0">
+		<lib:Button_5_Grey blendMode="normal" height="16" d:id="29" d:userLabel="Button_5_Grey" width="71" x="0" y="0">
+			<lib:filters>
+				<s:DropShadowFilter includeIn="over" hideObject="false" distance="4.0" knockout="false" color="#CCCCCC" strength="1" inner="false" blurX="4.0" angle="45.0" blurY="4.0" alpha="0.5" quality="2"/>
+				<s:BlurFilter includeIn="down" blurX="4.0" blurY="4.0" quality="2"/>
+			</lib:filters>
+		</lib:Button_5_Grey>
+		<s:RichText ai:aa="2" color="#000000" columnCount="1" fontFamily="Arial" fontSize="11" d:id="34" kerning="on" tabStops="S36" text="Browse CSV" d:userLabel="Browse CSV" flm:variant="17" whiteSpaceCollapse="preserve" x="5" y="4" color.over="#96F2FF" tabStops.over="S0 S50" color.down="#FF0000" tabStops.down="S0 S50">
+		</s:RichText>
+	</s:Group>
+</s:Skin>

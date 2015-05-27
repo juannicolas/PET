@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:s="library://ns.adobe.com/flex/spark" xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt">
+	<fx:Metadata>[HostComponent("spark.components.Button")]</fx:Metadata>
+	<s:states>
+		<s:State name="up"/>
+		<s:State name="over"/>
+		<s:State name="down"/>
+		<s:State name="disabled"/>
+	</s:states>
+	<fx:DesignLayer d:id="54" d:userLabel="Email image">
+		<s:Path data="M 0 0 L 0 13.09 L 18 13.09 L 18 0 L 0 0 Z M 9 8.386 L 11.269 6.753 L 16.033 11.728 L 1.963 11.728 L 6.732 6.753 L 9 8.386 Z M 9 6.034 L 3.269 1.909 L 14.731 1.909 L 9 6.034 Z M 6.063 6.271 L 1.364 11.169 L 1.364 2.89 L 6.063 6.271 Z M 16.636 11.171 L 11.94 6.271 L 16.636 2.89 L 16.636 11.171 Z" winding="nonZero" x="0.224" y="0.038">
+			<s:fill>
+				<s:SolidColor color="#999999"/>
+			</s:fill>
+		</s:Path>
+	</fx:DesignLayer>
+</s:Skin>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:s="library://ns.adobe.com/flex/spark" xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns:flm="http://ns.adobe.com/flame/2008">
+	<fx:Metadata>[HostComponent("spark.components.Button")]</fx:Metadata>
+	<s:states>
+		<s:State name="up"/>
+		<s:State name="over"/>
+		<s:State name="down"/>
+		<s:State name="disabled"/>
+	</s:states>
+	<s:Group d:id="24" flm:knockout="false" d:userLabel="Thumb" x="0" y="0">
+		<s:Rect height="22" d:id="25" radiusX="3.99972" radiusY="3.99972" flm:variant="14" width="8" x="1" y="0">
+			<s:fill>
+				<s:RadialGradient focalPointRatio="-0.894902" flm:focalY="0.44626197218895" scaleX="46.3352" scaleY="17.9602" x="4.00031" y="11.0002">
+					<s:GradientEntry color="#FFFFFF" ratio="0"/>
+					<s:GradientEntry color="#7FD0E8" ratio="0.375758"/>
+					<s:GradientEntry color="#00B0D8" ratio="0.721212"/>
+					<s:GradientEntry color="#008AA9" ratio="0.981818"/>
+				</s:RadialGradient>
+			</s:fill>
+		</s:Rect>
+		<s:Rect height="22" radiusX="3.99972" radiusY="3.99972" width="8" x="0.5" y="0.5">
+			<s:stroke>
+				<s:SolidColorStroke caps="none" color="#E6E6E6" joints="miter" miterLimit="10" weight="1"/>
+			</s:stroke>
+		</s:Rect>
+	</s:Group>
+</s:Skin>

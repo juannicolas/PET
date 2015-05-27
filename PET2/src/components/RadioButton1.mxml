@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark">
+
+    <fx:Metadata>
+    	[HostComponent("spark.components.RadioButton")]
+    </fx:Metadata> 
+    
+    <s:states>
+        <s:State name="up"/>
+        <s:State name="over"/>
+        <s:State name="down"/>
+        <s:State name="disabled"/>
+        <s:State name="upAndSelected"/>
+        <s:State name="overAndSelected"/>
+        <s:State name="downAndSelected"/>
+        <s:State name="disabledAndSelected"/>
+    </s:states>
+
+    <s:Group x="0" alpha.disabled="0.5" alpha.disabledAndSelected="0.5" y="0">
+    
+        <!-- background -->
+        <s:Ellipse y="0.5" x="0.5" width="12" height="12">
+            <s:stroke>            
+                <s:SolidColorStroke color="#5380D0" color.disabled="#A9C0E8"/>
+            </s:stroke>
+            <s:fill>
+                <s:SolidColor color="#FFFFFF" color.over="#EBF4FF" color.overAndSelected="#EBF4FF" color.down="#DEEBFF" color.downAndSelected="#DEEBFF"/>
+            </s:fill>
+        </s:Ellipse>
+
+		<!-- shadow (down states only) -->
+		<s:Ellipse includeIn="down, downAndSelected" x="1.5" y="1.5" width="10" height="10">
+			<s:stroke> 
+				<s:LinearGradientStroke rotation="90">
+					<s:GradientEntry color="#5380D0" alpha="0.25" ratio="0"/>
+					<s:GradientEntry color="#5380D0" alpha="0" ratio="1"/>
+				</s:LinearGradientStroke>
+			</s:stroke>
+		</s:Ellipse>
+		
+        <!-- center -->
+        <s:Ellipse includeIn="upAndSelected, overAndSelected, downAndSelected, disabledAndSelected" x="4" y="4" width="5" height="5">
+            <s:fill>
+                <s:SolidColor color="#3D5D92" color.disabledAndSelected="#9DADC9"/>
+            </s:fill>
+        </s:Ellipse>
+    </s:Group>
+
+    <!-- Label -->
+    <s:RichText id="labelDisplay" x="18" textAlign="start" y="4" color="#CCCCCC" tabStops="S0" fontFamily="Arial"/>
+
+</s:Skin>

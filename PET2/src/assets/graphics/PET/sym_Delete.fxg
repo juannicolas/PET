@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Graphic xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:ai="http://ns.adobe.com/ai/2009" xmlns:fc="http://ns.adobe.com/flashcatalyst/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns="http://ns.adobe.com/fxg/2008" xmlns:flm="http://ns.adobe.com/flame/2008" version="2.0">
+	<Path winding="nonZero" x="16.302" y="16.301" data="M 24.15 0 L 15.697 8.453 L 7.245 0.002 L 0 7.246 L 8.453 15.699 L 0 24.152 L 7.245 31.397 L 15.697 22.943 L 24.15 31.397 L 31.396 24.152 L 22.942 15.699 L 31.396 7.246 L 24.15 0 Z">
+		<fill>
+			<SolidColor/>
+		</fill>
+	</Path>
+	<Path winding="nonZero" data="M 54.627 9.373 C 48.379 3.125 40.189 0 32 0 C 23.81 0 15.62 3.125 9.372 9.373 C -3.124 21.869 -3.124 42.131 9.372 54.627 C 15.62 60.875 23.81 64 32 64 C 40.189 64 48.379 60.875 54.627 54.627 C 67.124 42.131 67.124 21.869 54.627 9.373 Z M 51.091 51.092 C 45.992 56.191 39.212 59 32 59 C 24.788 59 18.007 56.191 12.907 51.092 C 7.809 45.992 5 39.211 5 32 C 5 24.787 7.809 18.008 12.907 12.908 C 18.007 7.809 24.788 5 32 5 C 39.212 5 45.992 7.809 51.091 12.908 L 51.092 12.908 C 56.191 18.008 59 24.787 59 32 C 59 39.211 56.191 45.992 51.091 51.092 Z">
+		<fill>
+			<SolidColor/>
+		</fill>
+	</Path>
+</Graphic>

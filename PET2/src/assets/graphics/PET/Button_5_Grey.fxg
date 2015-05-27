@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Graphic xmlns:ATE="http://ns.adobe.com/ate/2009" xmlns:ai="http://ns.adobe.com/ai/2009" xmlns:fc="http://ns.adobe.com/flashcatalyst/2009" xmlns:d="http://ns.adobe.com/fxg/2008/dt" xmlns="http://ns.adobe.com/fxg/2008" xmlns:flm="http://ns.adobe.com/flame/2008" version="2.0">
+	<Group flm:knockout="false">
+		<Path winding="nonZero" x="0.994" y="0.5" data="M 7.499 33 C 3.364 33 0 29.636 0 25.501 L 0 7.499 C 0 3.364 3.364 0 7.499 0 L 128.512 0 C 132.647 0 136.012 3.364 136.012 7.499 L 136.012 25.501 C 136.012 29.636 132.647 33 128.512 33 L 7.499 33 Z">
+			<fill>
+				<LinearGradient rotation="270" scaleX="32.3531" x="68.006" y="32.674">
+					<GradientEntry color="#FFFFFF" ratio="0"/>
+					<GradientEntry color="#B1BFC7" ratio="1"/>
+				</LinearGradient>
+			</fill>
+		</Path>
+		<Path winding="nonZero" x="0.494" data="M 129.012 1 C 132.872 1 136.012 4.14 136.012 7.999 L 136.012 26.001 C 136.012 29.86 132.872 33 129.012 33 L 7.999 33 C 4.14 33 1 29.86 1 26.001 L 1 7.999 C 1 4.14 4.14 1 7.999 1 L 129.012 1 M 129.012 0 L 7.999 0 C 3.601 0 0 3.6 0 7.999 L 0 26.001 C 0 30.4 3.601 34 7.999 34 L 129.012 34 C 133.412 34 137.012 30.4 137.012 26.001 L 137.012 7.999 C 137.012 3.6 133.412 0 129.012 0 L 129.012 0 Z">
+			<fill>
+				<SolidColor color="#8C98A0"/>
+			</fill>
+		</Path>
+	</Group>
+	<Group x="2" y="2" blendMode="screen" flm:isolated="false" flm:knockout="false">
+		<Path winding="nonZero" x="0.493" y="-0.002" data="M 133.012 12.646 L 133.012 6.001 C 133.012 2.691 130.319 0 127.012 0 L 6 0 C 2.692 0 0 2.691 0 6.001 L 0 12.646 L 133.012 12.646 Z">
+			<fill>
+				<LinearGradient rotation="90" scaleX="20.0637" x="66.506" y="-0.631">
+					<GradientEntry color="#FFFBD4" ratio="0"/>
+					<GradientEntry ratio="1"/>
+				</LinearGradient>
+			</fill>
+		</Path>
+	</Group>
+	<Group x="2" y="2" blendMode="screen" flm:isolated="false" flm:knockout="false">
+		<Path winding="nonZero" x="0.493" y="-0.002" data="M 127.012 0 L 6 0 C 2.692 0 0 2.691 0 6.001 L 0 7.002 C 0 3.692 2.692 1.001 6 1.001 L 127.012 1.001 C 130.319 1.001 133.012 3.692 133.012 7.002 L 133.012 6.001 C 133.012 2.691 130.319 0 127.012 0 Z">
+			<fill>
+				<LinearGradient rotation="90" scaleX="11.1091" x="66.506" y="-0.35">
+					<GradientEntry color="#FFFBD4" ratio="0"/>
+					<GradientEntry ratio="1"/>
+				</LinearGradient>
+			</fill>
+		</Path>
+	</Group>
+</Graphic>
